@@ -24,8 +24,20 @@ One app, three GenAI surfaces, all grounded in the same venue knowledge base and
 | **Fan Concierge** | Fans & volunteers | Multilingual chat assistant — auto-detects and replies in the fan's language. Strictly grounded in venue data (gates, facilities, food queues, transit, sustainability program) so it never invents locations |
 | **Navigate** | Everyone, incl. accessibility needs | AI wayfinding between any two points, with a **step-free toggle** (elevators/ramps only). Uses live queue data to add crowd-avoidance tips |
 
-### Hackathon themes covered
-✅ Real-time decision support & operational intelligence · ✅ Crowd management · ✅ Multilingual assistance · ✅ Navigation · ✅ Accessibility · ✅ Sustainability (zero-waste guidance, transit promotion) · ✅ Transportation (transit-aware gates & tips)
+### Problem statement coverage — every listed dimension, mapped to a shipped feature
+
+| Requirement | Delivered feature |
+|---|---|
+| **Navigation** | AI wayfinding between any two venue points with turn-by-turn steps and ETA (Navigate tab) |
+| **Crowd management** | Live sector-density bowl map, gate queue telemetry, and AI-recommended flow redistributions (Ops Command) |
+| **Accessibility** | Hard step-free routing constraint; accessible gates/seating/sensory-room knowledge in the concierge; WCAG-conscious UI (ARIA tabs pattern, skip link, keyboard-operable SVG map, reduced-motion support) |
+| **Transportation** | Gate↔transit mapping in the knowledge base; egress and weather-aware transit advice in briefs and chat |
+| **Sustainability** | Refill stations, cup-deposit scheme and free-transit promotion actively surfaced by the concierge |
+| **Multilingual assistance** | Concierge auto-detects and replies in the fan's language — zero per-language authoring |
+| **Operational intelligence** | Telemetry synthesized into risk level + prioritized, team-assigned actions with rationale |
+| **Real-time decision support** | One-click AI decision brief regenerated from the live telemetry snapshot at any moment |
+
+**Serving all four audiences:** organizers & venue staff (Ops Command), fans (Concierge + Navigate), volunteers (multilingual answers to relay + orange-vest assist flows), venue staff (gate/incident operations).
 
 ---
 
@@ -115,24 +127,27 @@ matchday-copilot/
 
 ---
 
-## Testing
+## Testing & code quality
 
-45 automated tests across both tiers, run in CI on every push (`.github/workflows/ci.yml`):
+58 automated tests across both tiers with 97%+ client statement coverage, plus a zero-warning ESLint gate — all run in CI on every push (`.github/workflows/ci.yml`):
 
 ```bash
-npm test                # everything
-npm run test:server     # 23 tests — node:test + supertest
-npm run test:client     # 22 tests — vitest + React Testing Library
+npm test                          # lint + all test suites
+npm run lint                      # ESLint (flat config, react + react-hooks rules)
+npm run test:server               # 23 tests — node:test + supertest
+npm run test:client               # 35 tests — vitest + React Testing Library
+npm run test:coverage --prefix client   # v8 coverage report (97.7% stmts)
 ```
 
 - **Server integration tests:** health endpoint modes, security headers, full input validation matrix (bad kind/roles/sizes/malformed JSON), demo-mode contract shapes (brief/route JSON schemas), and live-mode behavior against a mocked Anthropic upstream (payload forwarding, error mapping, no field leakage).
-- **Client unit tests:** telemetry simulation bounds and immutability, AI client request/response handling incl. markdown-fenced JSON, and component tests for tab navigation, decision-brief rendering, and error states.
+- **Client tests:** telemetry simulation bounds and immutability; AI client request/response handling incl. markdown-fenced JSON; component tests for every surface (Ops brief rendering, concierge conversation flow, route planning with the step-free constraint asserted in the outgoing prompt); error states throughout; ErrorBoundary recovery; and dedicated accessibility tests (WAI-ARIA tabs pattern, arrow-key navigation, skip link).
+- **Code quality gates:** ESLint flat config across server and client (react + react-hooks rules, zero warnings), JSDoc on public functions and components, pure/immutable helpers, and an app-factory server design with dependency-injected fetch for deterministic tests. See `SECURITY.md` for the documented threat model.
 
 ## Security
 
 - **API key isolation** — the Anthropic key lives only in server env (`.env` locally, dashboard env vars in deployment); the browser never sees it.
 - **Strict input validation** (`server/validate.js`) — whitelisted request kinds and roles, message count/size caps, normalized payloads so unknown fields are never forwarded upstream. Client-supplied `system` roles are rejected.
-- **Rate limiting** — 30 AI calls/min/IP on the only expensive endpoint.
+- **Rate limiting** — 30 AI calls/min/IP on the only expensive endpoint (`trust proxy` set so real client IPs are limited behind Render's proxy).
 - **Hardened headers** — helmet with a restrictive CSP, `x-powered-by` disabled.
 - **Scoped CORS** — dev origin only; production is same-origin.
 - **Bounded bodies** — 200 kB JSON limit with clean 400/413 error handling.

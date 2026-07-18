@@ -28,6 +28,9 @@ const ANTHROPIC_VERSION = "2023-06-01";
 export function createApp({ apiKey, model, serveStatic = false, fetchImpl = fetch } = {}) {
   const app = express();
   app.disable("x-powered-by");
+  // Deployments (Render/Heroku/etc.) sit behind a reverse proxy; trusting the
+  // first hop lets express-rate-limit see real client IPs instead of the proxy's.
+  app.set("trust proxy", 1);
 
   // Security headers. CSP allows self + inline styles (the app uses inline React styles).
   app.use(
@@ -122,7 +125,7 @@ export function createApp({ apiKey, model, serveStatic = false, fetchImpl = fetc
   }
 
   // Central error handler (malformed JSON bodies, etc.)
-  // eslint-disable-next-line no-unused-vars
+   
   app.use((err, _req, res, _next) => {
     if (err.type === "entity.parse.failed") {
       return res.status(400).json({ error: "Invalid JSON body" });

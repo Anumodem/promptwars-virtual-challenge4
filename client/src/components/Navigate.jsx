@@ -4,6 +4,11 @@ import { VENUE, PLACES } from "../data/venue.js";
 import { askClaude } from "../lib/ai.js";
 import { Eyebrow, Panel, Spinner } from "./ui.jsx";
 
+/**
+ * AI wayfinding surface: plans routes between venue points with an optional
+ * hard step-free constraint, using live gate-queue data for crowd avoidance.
+ * @param {{gates: Array<{id: string, queueMin: number}>}} props
+ */
 export default function Navigate({ gates }) {
   const [from, setFrom] = useState("Gate 2");
   const [to, setTo] = useState("Sector G");
@@ -45,16 +50,14 @@ export default function Navigate({ gates }) {
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr)", gap: 16 }} className="mdc-grid">
       <Panel>
         <Eyebrow color={T.amber}>Plan a route</Eyebrow>
-        <label style={lbl()}>From
-          <select value={from} onChange={(e) => setFrom(e.target.value)} style={selStyle}>
-            {PLACES.map((p) => <option key={p}>{p}</option>)}
-          </select>
-        </label>
-        <label style={lbl()}>To
-          <select value={to} onChange={(e) => setTo(e.target.value)} style={selStyle}>
-            {PLACES.map((p) => <option key={p}>{p}</option>)}
-          </select>
-        </label>
+        <label style={lbl()} htmlFor="nav-from">From</label>
+        <select id="nav-from" value={from} onChange={(e) => setFrom(e.target.value)} style={{ ...selStyle, marginBottom: 12 }}>
+          {PLACES.map((p) => <option key={p}>{p}</option>)}
+        </select>
+        <label style={lbl()} htmlFor="nav-to">To</label>
+        <select id="nav-to" value={to} onChange={(e) => setTo(e.target.value)} style={selStyle}>
+          {PLACES.map((p) => <option key={p}>{p}</option>)}
+        </select>
         <label style={{ display: "flex", alignItems: "center", gap: 8, margin: "14px 0", fontSize: 14, cursor: "pointer" }}>
           <input type="checkbox" checked={stepFree} onChange={(e) => setStepFree(e.target.checked)} />
           Step-free route (no stairs)

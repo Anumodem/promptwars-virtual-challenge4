@@ -4,6 +4,11 @@ import { VENUE, QUICK_PROMPTS } from "../data/venue.js";
 import { askClaude } from "../lib/ai.js";
 import { Eyebrow, Panel, Spinner } from "./ui.jsx";
 
+/**
+ * Fan-facing surface: multilingual chat grounded in the venue knowledge base
+ * plus live queue conditions. Replies in whatever language the fan writes in.
+ * @param {{sectors: Array, gates: Array}} props
+ */
 export default function Concierge({ sectors, gates }) {
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");

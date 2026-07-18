@@ -3,18 +3,25 @@ import { T, chip } from "./theme.js";
 import { VENUE, INCIDENT_POOL } from "./data/venue.js";
 import { initialSectors, initialGates, tickSectors, tickGates } from "./lib/telemetry.js";
 import { Eyebrow } from "./components/ui.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import OpsCommand from "./components/OpsCommand.jsx";
 import Concierge from "./components/Concierge.jsx";
 import Navigate from "./components/Navigate.jsx";
 
+/** Tab registry: id ties button, panel and component together. */
 const TABS = [
-  { id: "ops", label: "Ops Command", hint: "for organizers & venue staff" },
-  { id: "fan", label: "Fan Concierge", hint: "multilingual assistant" },
-  { id: "nav", label: "Navigate", hint: "AI wayfinding" },
+  { id: "ops", label: "Ops Command", hint: "for organizers & venue staff", Comp: OpsCommand },
+  { id: "fan", label: "Fan Concierge", hint: "multilingual assistant", Comp: Concierge },
+  { id: "nav", label: "Navigate", hint: "AI wayfinding", Comp: Navigate },
 ];
 
+/** Telemetry simulation tick interval (ms). */
 const TICK_MS = 5000;
 
+/**
+ * Root component: owns the shared telemetry state, the AI-mode badge,
+ * and the accessible tab navigation between the three surfaces.
+ */
 export default function App() {
   const [tab, setTab] = useState("ops");
   const [sectors, setSectors] = useState(initialSectors);
@@ -44,6 +51,15 @@ export default function App() {
     return () => clearInterval(id);
   }, []);
 
+  /** Arrow-key navigation between tabs, per WAI-ARIA tabs pattern. */
+  const onTabKeyDown = (e) => {
+    const idx = TABS.findIndex((t) => t.id === tab);
+    if (e.key === "ArrowRight") setTab(TABS[(idx + 1) % TABS.length].id);
+    if (e.key === "ArrowLeft") setTab(TABS[(idx - 1 + TABS.length) % TABS.length].id);
+  };
+
+  const active = TABS.find((t) => t.id === tab);
+
   return (
     <div style={{ minHeight: "100vh", background: T.ink, color: T.chalk, fontFamily: T.sans, padding: "20px 16px 40px" }}>
       <style>{`
@@ -52,7 +68,11 @@ export default function App() {
         button:focus-visible, input:focus-visible, select:focus-visible, [role="button"]:focus-visible { outline: 2px solid ${T.blue}; outline-offset: 2px; }
         @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
         select option { background: ${T.panel}; }
+        .mdc-skip { position: absolute; left: -9999px; top: 8px; background: ${T.blue}; color: #fff; padding: 8px 14px; border-radius: 8px; z-index: 10; }
+        .mdc-skip:focus { left: 16px; }
       `}</style>
+
+      <a className="mdc-skip" href="#mdc-main">Skip to main content</a>
 
       <div style={{ maxWidth: 1080, margin: "0 auto" }}>
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
@@ -67,18 +87,23 @@ export default function App() {
             <div style={{ color: T.green }}>● LIVE TELEMETRY</div>
             <div>{clock.toLocaleTimeString()}</div>
             {aiMode === "demo" && (
-              <div style={{ marginTop: 4, color: T.amber }}>AI: demo mode (no API key)</div>
+              <div style={{ marginTop: 4, color: T.amber }} role="status">AI: demo mode (no API key)</div>
             )}
-            {aiMode === "live" && <div style={{ marginTop: 4, color: T.blue }}>AI: Claude live</div>}
+            {aiMode === "live" && <div style={{ marginTop: 4, color: T.blue }} role="status">AI: Claude live</div>}
           </div>
         </header>
 
-        <nav style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }} aria-label="Sections">
+        <div role="tablist" aria-label="Copilot surfaces" style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
           {TABS.map((t) => (
             <button
               key={t.id}
+              role="tab"
+              id={`tab-${t.id}`}
+              aria-selected={tab === t.id}
+              aria-controls={`panel-${t.id}`}
+              tabIndex={tab === t.id ? 0 : -1}
               onClick={() => setTab(t.id)}
-              aria-current={tab === t.id}
+              onKeyDown={onTabKeyDown}
               style={{
                 ...chip(),
                 padding: "9px 16px",
@@ -92,11 +117,15 @@ export default function App() {
               <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.6 }}>{t.hint}</span>
             </button>
           ))}
-        </nav>
+        </div>
 
-        {tab === "ops" && <OpsCommand sectors={sectors} gates={gates} incidents={incidents} />}
-        {tab === "fan" && <Concierge sectors={sectors} gates={gates} />}
-        {tab === "nav" && <Navigate gates={gates} />}
+        <main id="mdc-main">
+          <section role="tabpanel" id={`panel-${active.id}`} aria-labelledby={`tab-${active.id}`}>
+            <ErrorBoundary>
+              <active.Comp sectors={sectors} gates={gates} incidents={incidents} />
+            </ErrorBoundary>
+          </section>
+        </main>
       </div>
     </div>
   );

@@ -9,6 +9,11 @@ import StadiumBowl from "./StadiumBowl.jsx";
 const densColor = (p) => T[densityLevel(p)];
 const SEV_COLOR = { info: "blue", warn: "amber", crit: "red" };
 
+/**
+ * Operations surface: live density bowl, gate queues, incident feed, and the
+ * Claude-generated decision brief (structured JSON → prioritized action cards).
+ * @param {{sectors: Array, gates: Array, incidents: Array}} props
+ */
 export default function OpsCommand({ sectors, gates, incidents }) {
   const [selected, setSelected] = useState("C");
   const [brief, setBrief] = useState(null);

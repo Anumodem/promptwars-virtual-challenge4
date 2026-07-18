@@ -1,6 +1,6 @@
 {
   "name": "matchday-copilot",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "GenAI-enabled stadium operations & fan experience platform for FIFA World Cup 2026",
   "private": true,
   "type": "module",
@@ -11,9 +11,10 @@
     "dev:client": "npm run dev --prefix client",
     "build": "npm run build --prefix client",
     "start": "NODE_ENV=production node server/index.js",
-    "test": "npm run test:server && npm run test:client",
+    "test": "npm run lint && npm run test:server && npm run test:client",
     "test:server": "node --test server/test/*.test.js",
-    "test:client": "npm test --prefix client"
+    "test:client": "npm test --prefix client",
+    "lint": "eslint ."
   },
   "dependencies": {
     "compression": "^1.7.4",
@@ -25,7 +26,12 @@
   },
   "devDependencies": {
     "concurrently": "^9.0.0",
-    "supertest": "^7.0.0"
+    "supertest": "^7.0.0",
+    "eslint": "^9.11.0",
+    "@eslint/js": "^9.11.0",
+    "eslint-plugin-react": "^7.36.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "globals": "^15.9.0"
   },
   "license": "MIT"
 }

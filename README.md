@@ -92,23 +92,56 @@ npm start               # serves the built client + API on :3001
 
 ```
 matchday-copilot/
-├── client/                 # React + Vite frontend
-│   ├── index.html
-│   ├── vite.config.js      # proxies /api → :3001 in dev
+├── client/                     # React + Vite frontend
+│   ├── vite.config.js          # dev proxy /api → :3001, vitest config
 │   └── src/
-│       ├── main.jsx
-│       └── App.jsx         # all three surfaces + stadium bowl SVG
+│       ├── App.jsx             # root: tabs, telemetry loop, AI-mode badge
+│       ├── theme.js            # design tokens + shared styles
+│       ├── data/venue.js       # venue knowledge base (AI grounding)
+│       ├── lib/telemetry.js    # pure simulation helpers (unit-tested)
+│       ├── lib/ai.js           # backend AI client (unit-tested)
+│       └── components/         # OpsCommand, Concierge, Navigate, StadiumBowl, ui
 ├── server/
-│   ├── index.js            # Express API proxy + static hosting
-│   └── demoMode.js         # canned responses when no API key
-├── docs/
-│   └── SOLUTION.md         # detailed solution write-up
+│   ├── index.js                # entrypoint (env + listen)
+│   ├── app.js                  # Express app factory (testable)
+│   ├── validate.js             # request validation (unit-tested)
+│   ├── demoMode.js             # canned responses when no API key
+│   └── test/                   # API integration tests (node:test + supertest)
+├── .github/workflows/ci.yml    # CI: tests + build on every push
+├── docs/SOLUTION.md            # detailed solution write-up
 ├── .env.example
-├── package.json
-└── README.md
+└── package.json
 ```
 
 ---
+
+## Testing
+
+45 automated tests across both tiers, run in CI on every push (`.github/workflows/ci.yml`):
+
+```bash
+npm test                # everything
+npm run test:server     # 23 tests — node:test + supertest
+npm run test:client     # 22 tests — vitest + React Testing Library
+```
+
+- **Server integration tests:** health endpoint modes, security headers, full input validation matrix (bad kind/roles/sizes/malformed JSON), demo-mode contract shapes (brief/route JSON schemas), and live-mode behavior against a mocked Anthropic upstream (payload forwarding, error mapping, no field leakage).
+- **Client unit tests:** telemetry simulation bounds and immutability, AI client request/response handling incl. markdown-fenced JSON, and component tests for tab navigation, decision-brief rendering, and error states.
+
+## Security
+
+- **API key isolation** — the Anthropic key lives only in server env (`.env` locally, dashboard env vars in deployment); the browser never sees it.
+- **Strict input validation** (`server/validate.js`) — whitelisted request kinds and roles, message count/size caps, normalized payloads so unknown fields are never forwarded upstream. Client-supplied `system` roles are rejected.
+- **Rate limiting** — 30 AI calls/min/IP on the only expensive endpoint.
+- **Hardened headers** — helmet with a restrictive CSP, `x-powered-by` disabled.
+- **Scoped CORS** — dev origin only; production is same-origin.
+- **Bounded bodies** — 200 kB JSON limit with clean 400/413 error handling.
+
+## Performance
+
+- gzip/brotli compression on all responses; static assets cached (`maxAge: 1h`).
+- `StadiumBowl` SVG is memoized (`React.memo` + `useMemo` arc geometry) so the 5s telemetry tick doesn't recompute paths unnecessarily.
+- Telemetry helpers are pure functions — one state pass per tick, no mutation.
 
 ## Roadmap
 

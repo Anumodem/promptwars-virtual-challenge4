@@ -21,10 +21,17 @@ const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 
-app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, mode: API_KEY ? "live" : "demo", model: API_KEY ? MODEL : null });
+app.get("/", (_req, res) => {
+  res.send("Server is working!");
 });
 
+app.get("/api/health", (_req, res) => {
+  res.json({
+    ok: true,
+    mode: API_KEY ? "live" : "demo",
+    model: API_KEY ? MODEL : null,
+  });
+});
 // Single AI endpoint used by all three surfaces (ops brief, concierge, wayfinding).
 // Body: { kind: "brief" | "chat" | "route", messages: [...], system: "..." }
 app.post("/api/ai", async (req, res) => {

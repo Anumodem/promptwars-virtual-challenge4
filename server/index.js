@@ -21,10 +21,7 @@ const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 
-app.get("/", (_req, res) => {
-  res.send("Server is working!");
-});
-
+// Health check
 app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
@@ -32,17 +29,23 @@ app.get("/api/health", (_req, res) => {
     model: API_KEY ? MODEL : null,
   });
 });
-// Single AI endpoint used by all three surfaces (ops brief, concierge, wayfinding).
-// Body: { kind: "brief" | "chat" | "route", messages: [...], system: "..." }
+
+// AI endpoint
 app.post("/api/ai", async (req, res) => {
   const { kind, messages, system } = req.body || {};
+
   if (!Array.isArray(messages) || messages.length === 0) {
-    return res.status(400).json({ error: "messages array is required" });
+    return res.status(400).json({
+      error: "messages array is required",
+    });
   }
 
-  // Demo mode: no API key configured — return a realistic canned response.
+  // Demo mode
   if (!API_KEY) {
-    return res.json({ text: demoResponse(kind, messages), demo: true });
+    return res.json({
+      text: demoResponse(kind, messages),
+      demo: true,
+    });
   }
 
   try {
@@ -53,32 +56,56 @@ app.post("/api/ai", async (req, res) => {
         "x-api-key": API_KEY,
         "anthropic-version": "2023-06-01",
       },
-      body: JSON.stringify({ model: MODEL, max_tokens: 1000, system, messages }),
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 1000,
+        system,
+        messages,
+      }),
     });
+
     const data = await r.json();
+
     if (!r.ok) {
-      console.error("Anthropic API error:", data);
-      return res.status(502).json({ error: data?.error?.message || "AI upstream error" });
+      console.error(data);
+      return res.status(502).json({
+        error: data?.error?.message || "AI upstream error",
+      });
     }
+
     const text = (data.content || [])
       .filter((b) => b.type === "text")
       .map((b) => b.text)
       .join("\n");
-    res.json({ text, demo: false });
+
+    res.json({
+      text,
+      demo: false,
+    });
   } catch (err) {
-    console.error("AI request failed:", err);
-    res.status(500).json({ error: "AI request failed" });
+    console.error(err);
+    res.status(500).json({
+      error: "AI request failed",
+    });
   }
 });
 
-// Serve the built frontend in production.
+// ---------- Serve React Frontend ----------
 if (process.env.NODE_ENV === "production") {
-  const dist = path.join(__dirname, "..", "client", "dist");
-  app.use(express.static(dist));
-  app.get("*", (_req, res) => res.sendFile(path.join(dist, "index.html")));
+  const distPath = path.resolve(__dirname, "../client/dist");
+
+  app.use(express.static(distPath));
+
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(distPath, "index.html"));
+  });
 }
 
 app.listen(PORT, () => {
   console.log(`Matchday Copilot server on http://localhost:${PORT}`);
-  console.log(API_KEY ? `AI mode: LIVE (${MODEL})` : "AI mode: DEMO (set ANTHROPIC_API_KEY in .env for live AI)");
+  console.log(
+    API_KEY
+      ? `AI mode: LIVE (${MODEL})`
+      : "AI mode: DEMO (set ANTHROPIC_API_KEY in .env for live AI)"
+  );
 });
